@@ -1,0 +1,9 @@
+streamlit
+transformers==4.44.2
+tokenizers==0.19.1
+huggingface_hub==0.24.6
+accelerate==0.33.0
+torch
+pypdf
+sentencepiece
+numpy<2
