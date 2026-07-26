@@ -1,3 +1,4 @@
+import re
 import streamlit as st
 from transformers import pipeline
 from pypdf import PdfReader
@@ -42,6 +43,36 @@ def load_models():
         model_kwargs={"low_cpu_mem_usage": False},
     )
     return classifier, summarizer, ner
+
+
+# ---------------------------------------------------------------------------
+# Display-safety helpers
+# ---------------------------------------------------------------------------
+def escape_markdown(text):
+    """Escape characters that Streamlit's markdown/LaTeX renderer would
+    otherwise interpret on their own (e.g. '$12K' turning into a LaTeX math
+    expression, or '*' / '_' triggering bold/italic mid-sentence)."""
+    for ch in ["$", "*", "_", "`", "#"]:
+        text = text.replace(ch, "\\" + ch)
+    return text
+
+
+def fix_pdf_spacing(text):
+    """Collapse stray spaces that pypdf sometimes inserts inside a single
+    word when extracting justified/wrapped PDF text (e.g. 'initia tives'
+    instead of 'initiatives')."""
+    # Join a lowercase fragment of <=3 letters back onto the word before it
+    # when it's immediately followed by more lowercase letters, which is the
+    # signature of a broken word rather than two real words.
+    text = re.sub(r'\b([a-z]{2,})\s+([a-z]{1,3})\b(?=[a-z])', r'\1\2', text)
+    return text
+
+
+def summary_to_bullets(summary_text):
+    """Split a summary paragraph into individual sentences so it can be
+    rendered as a clean bullet list instead of one dense block of text."""
+    sentences = re.split(r'(?<=[.!?])\s+(?=[A-Z])', summary_text.strip())
+    return [s.strip() for s in sentences if s.strip()]
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +190,14 @@ def main():
         summary = summarize_resume(chunks, summarizer)
 
     st.subheader("📝 Professional Summary")
-    st.write(summary)
+    clean_summary = fix_pdf_spacing(summary)
+    bullets = summary_to_bullets(clean_summary)
+    summary_html = "".join(
+        f'<li style="font-family: \'Source Sans Pro\', sans-serif; font-size: 16px; '
+        f'line-height: 1.6; margin-bottom: 8px;">{escape_markdown(b)}</li>'
+        for b in bullets
+    )
+    st.markdown(f'<ul style="padding-left: 20px;">{summary_html}</ul>', unsafe_allow_html=True)
     st.markdown("---")
 
     st.subheader("📊 Target Role Match Rating")
