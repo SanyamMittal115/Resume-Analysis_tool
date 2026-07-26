@@ -206,9 +206,8 @@ def extract_skills(chunks, ner):
 # ---------------------------------------------------------------------------
 def summarize_resume(chunks, summarizer):
     summaries = []
-    for chunk in chunks[:3]:
-        if len(chunk.split()) < 15:
-            continue
+    substantial_chunks = [c for c in chunks if len(c.split()) >= 15]
+    for chunk in substantial_chunks[:3]:
         result = summarizer(chunk, max_length=100, min_length=25, do_sample=False)
         summaries.append(result[0]["summary_text"])
     return " ".join(summaries) if summaries else "Not enough resume text to summarize."
