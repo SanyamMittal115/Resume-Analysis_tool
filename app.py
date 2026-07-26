@@ -62,11 +62,12 @@ def html_escape(text):
 
 # Common suffixes that pypdf sometimes splits off into their own "word" when
 # extracting justified/wrapped PDF text (e.g. "initia tives" instead of
-# "initiatives"). Matched regardless of fragment length, unlike a short
-# leftover like "tives" would be.
+# "initiatives"). Deliberately excludes any entry that is itself a real
+# standalone English word (e.g. "full", "less", "ally", "ships", "wards") --
+# those caused false merges like "the full product" -> "thefull product".
 _BROKEN_SUFFIXES = (
     "tions?|ments?|ties|tives?|ing|ings|ness|able|ible|ously?|ances?|ences?|"
-    "ives?|ships?|wards?|less|fully?|ally|ies|ers?|est"
+    "ives?|ies|ers?"
 )
 _SUFFIX_BREAK_RE = re.compile(rf'\b([a-z]{{3,}})\s+({_BROKEN_SUFFIXES})\b')
 _SHORT_FRAGMENT_RE = re.compile(r'\b([a-z]{2,})\s+([a-z]{1,3})\b(?=[a-z])')
@@ -204,13 +205,26 @@ def extract_skills(chunks, ner):
 # ---------------------------------------------------------------------------
 # Summarization
 # ---------------------------------------------------------------------------
-def summarize_resume(chunks, summarizer):
-    summaries = []
+def summarize_resume(chunks, summarizer, max_chunks=5):
     substantial_chunks = [c for c in chunks if len(c.split()) >= 15]
-    for chunk in substantial_chunks[:3]:
+    if not substantial_chunks:
+        return "Not enough resume text to summarize."
+
+    if len(substantial_chunks) <= max_chunks:
+        selected = substantial_chunks
+    else:
+        # Evenly spaced picks across the whole document, so early sections
+        # (education) don't crowd out later ones (projects, skills) just
+        # because they happen to come first in the resume.
+        step = len(substantial_chunks) / max_chunks
+        indices = sorted(set(int(i * step) for i in range(max_chunks)))
+        selected = [substantial_chunks[i] for i in indices]
+
+    summaries = []
+    for chunk in selected:
         result = summarizer(chunk, max_length=100, min_length=25, do_sample=False)
         summaries.append(result[0]["summary_text"])
-    return " ".join(summaries) if summaries else "Not enough resume text to summarize."
+    return " ".join(summaries)
 
 
 # ---------------------------------------------------------------------------
