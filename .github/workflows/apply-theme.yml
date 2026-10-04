@@ -1,0 +1,28 @@
+name: Apply visual theme
+on:
+  push:
+    paths:
+      - 'theme.css'
+      - '.github/workflows/apply-theme.yml'
+permissions:
+  contents: write
+jobs:
+  theme:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Link theme and polish capitalization
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('index.html'); s=p.read_text()
+          if 'theme.css' not in s: s=s.replace('</head>','<link rel="stylesheet" href="/theme.css"></head>')
+          s=s.replace('How it works','How It Works').replace('View analysis','View Analysis').replace('relative match','Relative Match')
+          p.write_text(s)
+          PY
+      - name: Commit theme link
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html
+          git diff --cached --quiet || (git commit -m "Apply polished visual theme" && git push)
