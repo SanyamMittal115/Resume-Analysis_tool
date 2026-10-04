@@ -1,1 +1,1 @@
-{"$schema":"https://openapi.vercel.sh/vercel.json","builds":[{"src":"index.html","use":"@vercel/static"}],"routes":[{"src":"/(.*)","dest":"/index.html"}]}
+{"$schema":"https://openapi.vercel.sh/vercel.json","framework":null,"rewrites":[{"source":"/((?!theme\\.css$).*)","destination":"/index.html"}],"headers":[{"source":"/theme.css","headers":[{"key":"Cache-Control","value":"public, max-age=0, must-revalidate"}]}]}
